@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Control de Acero - Inventario</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+    <div id="loading-screen" class="loading-screen">
+        <div class="spinner"></div>
+        <p>Cargando...</p>
+    </div>
+
+    <div id="login-screen" style="display:none">
+        <div class="login-card">
+            <h1>Control Acero</h1>
+            <p class="sub">Inventario de acero</p>
+            <div class="form-group">
+                <label>Usuario</label>
+                <input type="text" id="login-user" placeholder="Usuario" autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label>Contraseña</label>
+                <input type="password" id="login-pass" placeholder="Contraseña" autocomplete="current-password">
+            </div>
+            <button class="btn btn-primary btn-block" id="login-btn" onclick="handleLogin()">Ingresar</button>
+        </div>
+    </div>
+
+    <div id="app-screen">
+        <div class="topbar" id="topbar"></div>
+        <div class="container" id="dashboard"></div>
+    </div>
+
+    <div class="fab-menu" id="fab-menu">
+        <button class="fab-option entry" onclick="openEntryModal()" title="Entrada">+</button>
+        <button class="fab-option exit" onclick="openExitModal()" title="Salida">−</button>
+    </div>
+    <button class="fab" id="fab" onclick="toggleFabMenu()" title="Menú">+</button>
+
+    <div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this){closeModal('modal-overlay')}">
+        <div class="modal" id="modal-inner"></div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
