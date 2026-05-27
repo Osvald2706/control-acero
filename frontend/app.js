@@ -1,6 +1,12 @@
 const API = '';
 let state = { user: null, token: null, inventory: [], steelTypes: [], movements: [], fabOpen: false };
 
+function apiBlob(path) {
+  const headers = {};
+  if (state.token) headers['Authorization'] = `Bearer ${state.token}`;
+  return fetch(`${API}${path}`, { headers });
+}
+
 function $(id) { return document.getElementById(id); }
 
 async function api(path, opts = {}) {
@@ -55,12 +61,29 @@ async function loadData() {
   } catch (e) { if (e.message.includes('Token') || e.message.includes('401')) handleLogout(); }
 }
 
+async function exportExcel() {
+  try {
+    const res = await apiBlob('/api/inventory/export');
+    if (!res.ok) throw new Error('Error al exportar');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'inventario_acero.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (e) { alert(e.message); }
+}
+
 function renderTopbar() {
   $('topbar').innerHTML = `
     <div class="topbar-left"><h2>⚙ Control Acero</h2></div>
     <div class="topbar-right">
       <span class="user-badge">${state.user.name}</span>
       <button class="topbar-btn" onclick="showModal('Historial', renderHistory)" title="Historial">📋</button>
+      <button class="topbar-btn" onclick="exportExcel()" title="Exportar Excel">📥</button>
       ${state.user.role === 'admin' ? `<button class="topbar-btn" onclick="showModal('Panel Admin', renderAdminPanel)" title="Admin">⚙️</button>` : ''}
       <button class="topbar-btn" onclick="handleLogout()" title="Salir">🚪</button>
     </div>
@@ -134,6 +157,15 @@ function formatDate(iso) {
   return d.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+async function deleteMovement(id) {
+  if (!confirm('¿Eliminar este movimiento? El stock se recalculará automáticamente.')) return;
+  try {
+    await api(`/api/movements/${id}`, { method: 'DELETE' });
+    showModal('Historial', renderHistory);
+    await loadData();
+  } catch (e) { alert(e.message); }
+}
+
 async function renderHistory() {
   let movements = state.movements;
   if (movements.length === 0) return '<div class="empty-state"><div class="icon">📋</div><p>Sin movimientos</p></div>';
@@ -150,6 +182,7 @@ async function renderHistory() {
         <div style="text-align:right">
           <div class="qty ${qtyCls}">${sign}${m.quantity}</div>
           <div class="date">${formatDate(m.created_at)}</div>
+          ${state.user.role === 'admin' ? `<button class="btn btn-sm btn-danger" style="margin-top:4px;padding:2px 8px;font-size:11px" onclick="deleteMovement(${m.id})">×</button>` : ''}
         </div>
       </div>
     `;

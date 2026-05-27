@@ -1,9 +1,10 @@
 import hashlib
 import secrets
+import io
 from datetime import datetime
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -11,6 +12,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from database import get_db, engine
 import models
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -267,6 +270,135 @@ def create_exit(
     db.commit()
     db.refresh(m)
     return {"ok": True, "id": m.id}
+
+
+@app.delete("/api/movements/{movement_id}")
+def delete_movement(
+    movement_id: int,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Solo administradores")
+    m = db.query(models.Movement).filter(models.Movement.id == movement_id).first()
+    if not m:
+        raise HTTPException(status_code=404, detail="Movimiento no encontrado")
+    db.delete(m)
+    db.commit()
+    return {"ok": True}
+
+
+@app.get("/api/inventory/export")
+def export_inventory(user=Depends(get_current_user), db: Session = Depends(get_db)):
+    entries = (
+        db.query(
+            models.Movement.steel_type_id,
+            func.sum(models.Movement.quantity).label("total"),
+        )
+        .filter(models.Movement.movement_type == "entry")
+        .group_by(models.Movement.steel_type_id)
+        .subquery()
+    )
+    exits = (
+        db.query(
+            models.Movement.steel_type_id,
+            func.sum(models.Movement.quantity).label("total"),
+        )
+        .filter(models.Movement.movement_type == "exit")
+        .group_by(models.Movement.steel_type_id)
+        .subquery()
+    )
+
+    steel_types = db.query(models.SteelType).order_by(models.SteelType.name).all()
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Inventario"
+
+    header_font = Font(bold=True, color="FFFFFF", size=12)
+    header_fill = PatternFill(start_color="4f46e5", end_color="4f46e5", fill_type="solid")
+    header_alignment = Alignment(horizontal="center", vertical="center")
+    thin_border = Border(
+        left=Side(style="thin"),
+        right=Side(style="thin"),
+        top=Side(style="thin"),
+        bottom=Side(style="thin"),
+    )
+
+    headers = ["Tipo de Acero", "Cantidad Disponible", "Estado"]
+    for col, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=h)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_alignment
+        cell.border = thin_border
+
+    ws.column_dimensions["A"].width = 35
+    ws.column_dimensions["B"].width = 22
+    ws.column_dimensions["C"].width = 15
+
+    row = 2
+    for st in steel_types:
+        entry_qty = db.query(entries.c.total).filter(entries.c.steel_type_id == st.id).scalar() or 0
+        exit_qty = db.query(exits.c.total).filter(exits.c.steel_type_id == st.id).scalar() or 0
+        stock = entry_qty - exit_qty
+        status = "Bajo stock" if stock < 5 else "OK"
+
+        ws.cell(row=row, column=1, value=st.name).border = thin_border
+        ws.cell(row=row, column=2, value=stock).border = thin_border
+        ws.cell(row=row, column=2).alignment = Alignment(horizontal="center")
+        status_cell = ws.cell(row=row, column=3, value=status)
+        status_cell.border = thin_border
+        status_cell.alignment = Alignment(horizontal="center")
+        if stock < 5:
+            status_cell.font = Font(color="EF4444", bold=True)
+        row += 1
+
+    ws2 = wb.create_sheet("Movimientos")
+    mov_headers = [
+        "Fecha", "Tipo", "Tipo de Acero", "Cantidad",
+        "Quién Registró", "Quién Sacó", "Nota",
+    ]
+    for col, h in enumerate(mov_headers, 1):
+        cell = ws2.cell(row=1, column=col, value=h)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_alignment
+        cell.border = thin_border
+
+    widths = [20, 12, 30, 12, 20, 20, 30]
+    for i, w in enumerate(widths, 1):
+        ws2.column_dimensions[chr(64 + i)].width = w
+
+    movements = (
+        db.query(models.Movement)
+        .order_by(models.Movement.created_at.desc())
+        .limit(500)
+        .all()
+    )
+    row = 2
+    for m in movements:
+        u = db.query(models.User).filter(models.User.id == m.registered_by).first()
+        ws2.cell(row=row, column=1, value=m.created_at.strftime("%d/%m/%Y %H:%M") if m.created_at else "").border = thin_border
+        ws2.cell(row=row, column=2, value="Entrada" if m.movement_type == "entry" else "Salida").border = thin_border
+        ws2.cell(row=row, column=2).alignment = Alignment(horizontal="center")
+        ws2.cell(row=row, column=3, value=m.steel_type.name if m.steel_type else "").border = thin_border
+        ws2.cell(row=row, column=4, value=m.quantity).border = thin_border
+        ws2.cell(row=row, column=4).alignment = Alignment(horizontal="center")
+        ws2.cell(row=row, column=5, value=u.name if u else "").border = thin_border
+        ws2.cell(row=row, column=6, value=m.person_name or "").border = thin_border
+        ws2.cell(row=row, column=7, value=m.note or "").border = thin_border
+        row += 1
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=inventario_acero.xlsx"},
+    )
 
 
 # ---------- STEEL TYPES ----------
