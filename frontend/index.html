@@ -6,34 +6,27 @@
     <title>Control de Acero - Inventario</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
-    <div id="toast-container" class="toast-container"></div>
-
     <div id="loading-screen" class="loading-screen">
-        <div class="loading-logo">CA<span>.</span></div>
         <div class="spinner"></div>
         <p>Cargando...</p>
     </div>
 
     <div id="login-screen" style="display:none">
-        <div class="bg-circle-1"></div>
-        <div class="bg-circle-2"></div>
-        <div class="bg-circle-3"></div>
         <div class="login-card">
-            <div class="login-badge">⚙ Control de Acero</div>
-            <h1>Iniciar Sesión</h1>
-            <p class="sub">Ingresa tus credenciales para acceder al inventario</p>
+            <h1>Control Acero</h1>
+            <p class="sub">Inventario de acero</p>
             <div class="form-group">
                 <label>Usuario</label>
-                <input type="text" id="login-user" placeholder="Tu usuario" autocomplete="username">
+                <input type="text" id="login-user" placeholder="Usuario" autocomplete="username">
             </div>
             <div class="form-group">
                 <label>Contraseña</label>
-                <input type="password" id="login-pass" placeholder="••••••" autocomplete="current-password">
+                <input type="password" id="login-pass" placeholder="Contraseña" autocomplete="current-password">
             </div>
             <button class="btn btn-primary btn-block" id="login-btn" onclick="handleLogin()">Ingresar</button>
         </div>
@@ -44,15 +37,13 @@
         <div class="container" id="dashboard"></div>
     </div>
 
-    <div class="fab-container">
-        <div class="fab-menu" id="fab-menu">
-            <button class="fab-option entry" onclick="openEntryModal()" title="Entrada"><span class="label">Entrada</span>+</button>
-            <button class="fab-option exit" onclick="openExitModal()" title="Salida"><span class="label">Salida</span>−</button>
-        </div>
-        <button class="fab-main" id="fab-main" onclick="toggleFabMenu()" title="Menú">+</button>
+    <div class="fab-menu" id="fab-menu">
+        <button class="fab-option entry" onclick="openEntryModal()" title="Entrada">+</button>
+        <button class="fab-option exit" onclick="openExitModal()" title="Salida">−</button>
     </div>
+    <button class="fab" id="fab" onclick="toggleFabMenu()" title="Menú">+</button>
 
-    <div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this){closeModal()}">
+    <div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this){closeModal('modal-overlay')}">
         <div class="modal" id="modal-inner"></div>
     </div>
 
