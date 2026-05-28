@@ -161,6 +161,7 @@ function closeModal() {
   $('modal-overlay').classList.remove('open');
   state.fabOpen = false;
   $('fab-menu').className = 'fab-menu';
+  $('fab').style.transform = 'rotate(0deg)';
 }
 
 /* ===== MODAL ===== */
