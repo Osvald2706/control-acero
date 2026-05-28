@@ -44,16 +44,18 @@
         <div class="container" id="dashboard"></div>
     </div>
 
-    <div class="fab-menu" id="fab-menu">
-        <button class="fab-option entry" onclick="openEntryModal()" title="Entrada">+</button>
-        <button class="fab-option exit" onclick="openExitModal()" title="Salida">−</button>
+    <div class="fab-container">
+        <div class="fab-menu" id="fab-menu">
+            <button class="fab-option entry" onclick="openEntryModal()" title="Entrada"><span class="label">Entrada</span>+</button>
+            <button class="fab-option exit" onclick="openExitModal()" title="Salida"><span class="label">Salida</span>−</button>
+        </div>
+        <button class="fab-main" id="fab-main" onclick="toggleFabMenu()" title="Menú">+</button>
     </div>
-    <button class="fab" id="fab" onclick="toggleFabMenu()" title="Menú">+</button>
 
     <div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this){closeModal()}">
         <div class="modal" id="modal-inner"></div>
     </div>
 
-    <script src="/static/app.js?v=3"></script>
+    <script src="/static/app.js"></script>
 </body>
 </html>

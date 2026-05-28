@@ -26,7 +26,6 @@ class Token(Base):
 class SteelType(Base):
     __tablename__ = "steel_types"
     id = Column(Integer, primary_key=True, index=True)
-    code = Column(String(50), nullable=True, index=True)
     name = Column(String(200), unique=True, index=True)
 
 

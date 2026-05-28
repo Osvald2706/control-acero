@@ -123,14 +123,25 @@ function renderDashboard() {
     : state.inventory.map(item => {
         const isLow = item.stock < 5;
         const isCritical = item.stock === 0;
+        const stockClass = isCritical ? 'critical' : isLow ? 'warning' : 'ok';
+        const badge = isCritical
+          ? '<span class="inv-card-badge badge-low">⚠ Sin stock</span>'
+          : isLow
+          ? '<span class="inv-card-badge badge-warning">⚠ Bajo stock</span>'
+          : '<span class="inv-card-badge badge-ok">✓ Disponible</span>';
         return `
-          <div class="inv-card ${isCritical ? 'critical' : isLow ? 'low' : ''}">
-            <div class="inv-card-body">
-              <div class="inv-card-info">
-                ${item.code ? `<div class="inv-card-code">${item.code}</div>` : ''}
-                <div class="inv-card-name">${item.name}</div>
+          <div class="inv-card">
+            <div class="inv-card-top">
+              <div class="inv-card-name">${item.name}</div>
+              <div class="inv-card-stock ${stockClass}">${item.stock}</div>
+            </div>
+            <div class="inv-card-bottom">
+              <div class="inv-card-meta">
+                ${item.last_movement
+                  ? `${item.last_movement.type === 'entry' ? '📥' : '📤'} ${item.last_movement.by} · ${formatDate(item.last_movement.date)}`
+                  : 'Sin movimientos'}
               </div>
-              <div class="inv-card-stock">${item.stock}</div>
+              ${badge}
             </div>
           </div>
         `;
@@ -153,15 +164,15 @@ function renderDashboard() {
 /* ===== FAB ===== */
 function toggleFabMenu() {
   state.fabOpen = !state.fabOpen;
-  $('fab-menu').className = `fab-menu ${state.fabOpen ? 'show' : ''}`;
-  $('fab').style.transform = state.fabOpen ? 'rotate(45deg)' : 'rotate(0deg)';
+  $('fab-menu').className = `fab-menu ${state.fabOpen ? 'open' : ''}`;
+  $('fab-main').className = `fab-main ${state.fabOpen ? 'open' : ''}`;
 }
 
 function closeModal() {
   $('modal-overlay').classList.remove('open');
   state.fabOpen = false;
   $('fab-menu').className = 'fab-menu';
-  $('fab').style.transform = 'rotate(0deg)';
+  $('fab-main').className = 'fab-main';
 }
 
 /* ===== MODAL ===== */
@@ -222,11 +233,10 @@ async function renderHistory() {
     const qtyCls = m.movement_type === 'entry' ? 'positive' : 'negative';
     const sign = m.movement_type === 'entry' ? '+' : '−';
     const typeLabel = m.movement_type === 'entry' ? 'Entrada' : 'Salida';
-    const codeLabel = m.steel_type_code ? `<span style="font-size:.6875rem;color:var(--gray-400);font-weight:500">${m.steel_type_code}</span> ` : '';
     return `
       <div class="history-item${cls}">
         <div class="info">
-          <strong class="type-name">${codeLabel}${m.steel_type_name}</strong>
+          <strong class="type-name">${m.steel_type_name}</strong>
           <span class="meta">
             <span>👤 ${m.registered_by_name}</span>
             ${m.person_name ? `<span>· 🚶 ${m.person_name}</span>` : ''}
@@ -280,10 +290,7 @@ async function renderAdminPanel() {
       ${steelTypes.length === 0 ? '<div class="empty-state" style="padding:2rem"><div class="icon" style="width:48px;height:48px;font-size:1.25rem">🔩</div><h4 style="font-size:.875rem">Sin tipos registrados</h4><p style="font-size:.8125rem">Agrega tipos de acero para comenzar</p></div>' :
       steelTypes.map(s => `
         <div class="steel-row">
-          <div class="info">
-            <strong>${s.name}</strong>
-            ${s.code ? `<small>Código: ${s.code}</small>` : ''}
-          </div>
+          <div class="info"><strong>${s.name}</strong></div>
           <button class="btn btn-sm btn-danger" onclick="deleteSteelType(${s.id}, '${s.name.replace(/'/g, "\\'")}')" title="Eliminar">✕</button>
         </div>
       `).join('')}
@@ -353,7 +360,6 @@ async function showCreateSteelForm() {
       <button class="modal-close" onclick="closeModal()">×</button>
     </div>
     <div class="modal-form">
-      <div class="form-group"><label>Código</label><input type="text" id="form-steel-code" placeholder="Ej: HSS-100 (opcional)"></div>
       <div class="form-group"><label>Nombre</label><input type="text" id="form-steel-name" placeholder="Ej: Perfil HSS 100x100"></div>
       <button class="btn btn-primary btn-block mt-1" onclick="createSteelType()">Crear Tipo</button>
     </div>
@@ -362,10 +368,9 @@ async function showCreateSteelForm() {
 
 async function createSteelType() {
   const name = $('form-steel-name').value.trim();
-  const code = $('form-steel-code').value.trim();
   if (!name) return toast('Nombre requerido', 'error');
   try {
-    await api('/api/steel-types', { method: 'POST', body: JSON.stringify({ name, code }) });
+    await api('/api/steel-types', { method: 'POST', body: JSON.stringify({ name }) });
     toast('Tipo de acero creado', 'success');
     closeModal();
     await loadData();
@@ -386,9 +391,9 @@ async function deleteSteelType(id, name) {
 function openEntryModal() {
   state.fabOpen = false;
   $('fab-menu').className = 'fab-menu';
-  $('fab').style.transform = 'rotate(0deg)';
+  $('fab-main').className = 'fab-main';
   if (state.steelTypes.length === 0) return toast('Primero crea un tipo de acero en Admin', 'info');
-  const opts = state.steelTypes.map(s => `<option value="${s.id}">${s.code ? '[' + s.code + '] ' : ''}${s.name}</option>`).join('');
+  const opts = state.steelTypes.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
   $('modal-inner').innerHTML = `
     <div class="modal-header">
       <h3>📥 Registrar Entrada</h3>
@@ -420,9 +425,9 @@ async function submitEntry() {
 function openExitModal() {
   state.fabOpen = false;
   $('fab-menu').className = 'fab-menu';
-  $('fab').style.transform = 'rotate(0deg)';
+  $('fab-main').className = 'fab-main';
   if (state.steelTypes.length === 0) return toast('Primero crea un tipo de acero en Admin', 'info');
-  const opts = state.steelTypes.map(s => `<option value="${s.id}">${s.code ? '[' + s.code + '] ' : ''}${s.name}</option>`).join('');
+  const opts = state.steelTypes.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
   $('modal-inner').innerHTML = `
     <div class="modal-header">
       <h3>📤 Registrar Salida</h3>
