@@ -30,15 +30,6 @@ def seed_initial_data(db: Session):
     for username, password, name, role in users:
         h = hashlib.sha256(password.encode()).hexdigest()
         db.add(models.User(username=username, password_hash=h, name=name, role=role))
-    steels = [
-        "Perfil HSS 100x100",
-        "Placa 1/2\"",
-        "Varilla Corrugada 3/8\"",
-        "Ángulo 2\"x1/4\"",
-        "Solera 1\"x1/8\"",
-    ]
-    for name in steels:
-        db.add(models.SteelType(name=name))
     db.commit()
 
 
