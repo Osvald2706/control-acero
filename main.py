@@ -151,6 +151,7 @@ def get_inventory(user=Depends(get_current_user), db: Session = Depends(get_db))
         result.append({
             "id": st.id,
             "name": st.name,
+            "description": st.description or "",
             "stock": stock,
             "last_movement": last_info,
         })
@@ -397,7 +398,7 @@ def export_inventory(user=Depends(get_current_user), db: Session = Depends(get_d
 @app.get("/api/steel-types")
 def list_steel_types(user=Depends(get_current_user), db: Session = Depends(get_db)):
     q = db.query(models.SteelType).order_by(models.SteelType.name).all()
-    return [{"id": st.id, "name": st.name} for st in q]
+    return [{"id": st.id, "name": st.name, "description": st.description or ""} for st in q]
 
 
 @app.post("/api/steel-types")
@@ -414,11 +415,12 @@ def create_steel_type(
     existing = db.query(models.SteelType).filter(models.SteelType.name == name).first()
     if existing:
         raise HTTPException(status_code=400, detail="Ya existe")
-    st = models.SteelType(name=name)
+    description = data.get("description", "").strip()
+    st = models.SteelType(name=name, description=description)
     db.add(st)
     db.commit()
     db.refresh(st)
-    return {"id": st.id, "name": st.name}
+    return {"id": st.id, "name": st.name, "description": st.description or ""}
 
 
 @app.delete("/api/steel-types/{steel_type_id}")

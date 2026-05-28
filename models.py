@@ -27,6 +27,7 @@ class SteelType(Base):
     __tablename__ = "steel_types"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), unique=True, index=True)
+    description = Column(Text, nullable=True)
 
 
 class Movement(Base):

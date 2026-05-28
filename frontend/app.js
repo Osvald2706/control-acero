@@ -96,7 +96,7 @@ function renderDashboard() {
     return `
       <div class="card">
         <div class="card-header">
-          <div class="card-title">${item.name}</div>
+          <div class="card-title">${item.name}${item.description ? `<br><small style="font-weight:400;color:var(--gray-400);font-size:.75rem">${item.description}</small>` : ''}</div>
           <div class="stock-badge ${isLow ? 'low' : 'ok'}">${item.stock}</div>
         </div>
         ${isLow ? '<div class="low-stock-alert">⚠️ Bajo stock</div>' : ''}
@@ -223,7 +223,7 @@ async function renderAdminPanel() {
       </div>
       ${steelTypes.map(s => `
         <div class="steel-row">
-          <div class="info"><strong>${s.name}</strong></div>
+          <div class="info"><strong>${s.name}</strong>${s.description ? `<br><small>${s.description}</small>` : ''}</div>
           <button class="btn btn-sm btn-danger" onclick="deleteSteelType(${s.id}, '${s.name.replace(/'/g, "\\'")}')">×</button>
         </div>
       `).join('')}
@@ -287,15 +287,17 @@ async function showCreateSteelForm() {
       <button class="btn btn-ghost btn-sm" onclick="closeModal()">×</button>
     </div>
     <div class="form-group"><label>Nombre</label><input type="text" id="form-steel-name" placeholder="Ej: Perfil HSS 100x100"></div>
+    <div class="form-group"><label>Descripción</label><textarea id="form-steel-desc" placeholder="Opcional" rows="2"></textarea></div>
     <button class="btn btn-primary btn-block" onclick="createSteelType()">Crear</button>
   `;
 }
 
 async function createSteelType() {
   const name = $('form-steel-name').value.trim();
+  const description = $('form-steel-desc').value.trim();
   if (!name) return alert('Nombre requerido');
   try {
-    await api('/api/steel-types', { method: 'POST', body: JSON.stringify({ name }) });
+    await api('/api/steel-types', { method: 'POST', body: JSON.stringify({ name, description }) });
     closeModal();
     await loadData();
   } catch (e) { alert(e.message); }
