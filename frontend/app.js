@@ -387,17 +387,6 @@ async function createSteelType() {
   } catch (e) { toast(e.message, 'error'); }
 }
 
-async function createSteelType() {
-  const name = $('form-steel-name').value.trim();
-  if (!name) return toast('Nombre requerido', 'error');
-  try {
-    await api('/api/steel-types', { method: 'POST', body: JSON.stringify({ name }) });
-    toast('Tipo de acero creado', 'success');
-    closeModal();
-    await loadData();
-  } catch (e) { toast(e.message, 'error'); }
-}
-
 async function deleteSteelType(id, name) {
   if (!confirm(`¿Eliminar "${name}"?`)) return;
   try {
