@@ -168,15 +168,14 @@ function renderDashboard() {
 /* ===== FAB ===== */
 function toggleFabMenu() {
   state.fabOpen = !state.fabOpen;
-  $('fab-menu').className = `fab-menu ${state.fabOpen ? 'open' : ''}`;
-  $('fab-main').className = `fab-main ${state.fabOpen ? 'open' : ''}`;
+  $('fab-menu').className = `fab-menu ${state.fabOpen ? 'show' : ''}`;
+  $('fab').style.transform = state.fabOpen ? 'rotate(45deg)' : 'rotate(0deg)';
 }
 
 function closeModal() {
   $('modal-overlay').classList.remove('open');
   state.fabOpen = false;
   $('fab-menu').className = 'fab-menu';
-  $('fab-main').className = 'fab-main';
 }
 
 /* ===== MODAL ===== */
@@ -401,7 +400,7 @@ async function deleteSteelType(id, name) {
 function openEntryModal() {
   state.fabOpen = false;
   $('fab-menu').className = 'fab-menu';
-  $('fab-main').className = 'fab-main';
+  $('fab').style.transform = 'rotate(0deg)';
   if (state.steelTypes.length === 0) return toast('Primero crea un tipo de acero en Admin', 'info');
   const opts = state.steelTypes.map(s => `<option value="${s.id}">${s.code ? '[' + s.code + '] ' : ''}${s.name}</option>`).join('');
   $('modal-inner').innerHTML = `
@@ -435,7 +434,7 @@ async function submitEntry() {
 function openExitModal() {
   state.fabOpen = false;
   $('fab-menu').className = 'fab-menu';
-  $('fab-main').className = 'fab-main';
+  $('fab').style.transform = 'rotate(0deg)';
   if (state.steelTypes.length === 0) return toast('Primero crea un tipo de acero en Admin', 'info');
   const opts = state.steelTypes.map(s => `<option value="${s.id}">${s.code ? '[' + s.code + '] ' : ''}${s.name}</option>`).join('');
   $('modal-inner').innerHTML = `
