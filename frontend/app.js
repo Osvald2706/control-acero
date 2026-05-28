@@ -1,5 +1,5 @@
 const API = '';
-let state = { user: null, token: null, inventory: [], steelTypes: [], movements: [], fabOpen: false };
+let state = { user: null, token: null, inventory: [], steelTypes: [], movements: [], fabOpen: false, searchTerm: '' };
 
 function apiBlob(path) {
   const headers = {};
@@ -91,10 +91,18 @@ function renderTopbar() {
 }
 
 function renderDashboard() {
-  const html = state.inventory.map(item => {
+  const searchTerm = (state.searchTerm || '').toLowerCase();
+  const filtered = state.inventory.filter(item =>
+    item.name.toLowerCase().includes(searchTerm) ||
+    (item.description && item.description.toLowerCase().includes(searchTerm))
+  );
+
+  const cards = state.inventory.map(item => {
     const isLow = item.stock < 5;
+    const visible = !searchTerm || item.name.toLowerCase().includes(searchTerm) ||
+      (item.description && item.description.toLowerCase().includes(searchTerm));
     return `
-      <div class="card">
+      <div class="card" data-search="${(item.name + ' ' + (item.description || '')).toLowerCase()}" style="${visible ? '' : 'display:none'}">
         <div class="card-header">
           <div class="card-title">${item.name}${item.description ? `<br><small style="font-weight:400;color:var(--gray-400);font-size:.75rem">${item.description}</small>` : ''}</div>
           <div class="stock-badge ${isLow ? 'low' : 'ok'}">${item.stock}</div>
@@ -108,11 +116,33 @@ function renderDashboard() {
   }).join('');
 
   $('dashboard').innerHTML = `
+    <div style="margin-bottom:.75rem">
+      <input type="text" id="search-input" placeholder="Buscar material..." oninput="filterInventory(this.value)" style="width:100%;padding:.75rem 1rem;border:2px solid var(--gray-200);border-radius:12px;font-size:.9375rem;font-family:inherit;background:white;color:var(--gray-800);box-sizing:border-box">
+    </div>
     <div style="margin-bottom:1rem;font-size:.75rem;color:var(--gray-400);font-weight:600;text-transform:uppercase;letter-spacing:.08em">
       Inventario actual
     </div>
-    ${state.inventory.length === 0 ? '<div class="empty-state"><div class="icon">📦</div><p>No hay tipos de acero registrados</p></div>' : html}
+    ${state.inventory.length === 0 ? '<div class="empty-state"><div class="icon">📦</div><p>No hay tipos de acero registrados</p></div>' : cards}
+    <div id="search-empty" class="empty-state" style="display:none;margin-top:.75rem"><div class="icon">🔍</div><p>Sin resultados para "<span id="search-term-display"></span>"</p></div>
   `;
+  if (searchTerm) $('search-input').value = state.searchTerm;
+}
+
+function filterInventory(value) {
+  state.searchTerm = value;
+  const term = value.toLowerCase();
+  let visibleCount = 0;
+  document.querySelectorAll('.card').forEach(el => {
+    const visible = !term || el.dataset.search.includes(term);
+    el.style.display = visible ? '' : 'none';
+    if (visible) visibleCount++;
+  });
+  const emptyMsg = document.getElementById('search-empty');
+  const termDisplay = document.getElementById('search-term-display');
+  if (emptyMsg) {
+    emptyMsg.style.display = visibleCount === 0 && term ? '' : 'none';
+    if (termDisplay) termDisplay.textContent = value;
+  }
 }
 
 function toggleFabMenu() {
