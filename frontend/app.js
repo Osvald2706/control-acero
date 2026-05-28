@@ -129,10 +129,14 @@ function renderDashboard() {
           : isLow
           ? '<span class="inv-card-badge badge-warning">⚠ Bajo stock</span>'
           : '<span class="inv-card-badge badge-ok">✓ Disponible</span>';
+        const codeLabel = item.code ? `<span style="font-size:.75rem;color:var(--gray-400);font-weight:500;background:var(--gray-100);padding:.125rem .5rem;border-radius:6px;display:inline-block;margin-bottom:.375rem">${item.code}</span>` : '';
         return `
           <div class="inv-card">
             <div class="inv-card-top">
-              <div class="inv-card-name">${item.name}</div>
+              <div>
+                ${codeLabel}
+                <div class="inv-card-name">${item.name}</div>
+              </div>
               <div class="inv-card-stock ${stockClass}">${item.stock}</div>
             </div>
             <div class="inv-card-bottom">
@@ -233,10 +237,11 @@ async function renderHistory() {
     const qtyCls = m.movement_type === 'entry' ? 'positive' : 'negative';
     const sign = m.movement_type === 'entry' ? '+' : '−';
     const typeLabel = m.movement_type === 'entry' ? 'Entrada' : 'Salida';
+    const codeLabel = m.steel_type_code ? `<span style="font-size:.6875rem;color:var(--gray-400);font-weight:500">${m.steel_type_code}</span> ` : '';
     return `
       <div class="history-item${cls}">
         <div class="info">
-          <strong class="type-name">${m.steel_type_name}</strong>
+          <strong class="type-name">${codeLabel}${m.steel_type_name}</strong>
           <span class="meta">
             <span>👤 ${m.registered_by_name}</span>
             ${m.person_name ? `<span>· 🚶 ${m.person_name}</span>` : ''}
@@ -290,7 +295,10 @@ async function renderAdminPanel() {
       ${steelTypes.length === 0 ? '<div class="empty-state" style="padding:2rem"><div class="icon" style="width:48px;height:48px;font-size:1.25rem">🔩</div><h4 style="font-size:.875rem">Sin tipos registrados</h4><p style="font-size:.8125rem">Agrega tipos de acero para comenzar</p></div>' :
       steelTypes.map(s => `
         <div class="steel-row">
-          <div class="info"><strong>${s.name}</strong></div>
+          <div class="info">
+            <strong>${s.name}</strong>
+            ${s.code ? `<small>Código: ${s.code}</small>` : ''}
+          </div>
           <button class="btn btn-sm btn-danger" onclick="deleteSteelType(${s.id}, '${s.name.replace(/'/g, "\\'")}')" title="Eliminar">✕</button>
         </div>
       `).join('')}
@@ -360,10 +368,23 @@ async function showCreateSteelForm() {
       <button class="modal-close" onclick="closeModal()">×</button>
     </div>
     <div class="modal-form">
+      <div class="form-group"><label>Código</label><input type="text" id="form-steel-code" placeholder="Ej: HSS-100 (opcional)"></div>
       <div class="form-group"><label>Nombre</label><input type="text" id="form-steel-name" placeholder="Ej: Perfil HSS 100x100"></div>
       <button class="btn btn-primary btn-block mt-1" onclick="createSteelType()">Crear Tipo</button>
     </div>
   `;
+}
+
+async function createSteelType() {
+  const name = $('form-steel-name').value.trim();
+  const code = $('form-steel-code').value.trim();
+  if (!name) return toast('Nombre requerido', 'error');
+  try {
+    await api('/api/steel-types', { method: 'POST', body: JSON.stringify({ name, code }) });
+    toast('Tipo de acero creado', 'success');
+    closeModal();
+    await loadData();
+  } catch (e) { toast(e.message, 'error'); }
 }
 
 async function createSteelType() {
@@ -393,7 +414,7 @@ function openEntryModal() {
   $('fab-menu').className = 'fab-menu';
   $('fab-main').className = 'fab-main';
   if (state.steelTypes.length === 0) return toast('Primero crea un tipo de acero en Admin', 'info');
-  const opts = state.steelTypes.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+  const opts = state.steelTypes.map(s => `<option value="${s.id}">${s.code ? '[' + s.code + '] ' : ''}${s.name}</option>`).join('');
   $('modal-inner').innerHTML = `
     <div class="modal-header">
       <h3>📥 Registrar Entrada</h3>
@@ -427,7 +448,7 @@ function openExitModal() {
   $('fab-menu').className = 'fab-menu';
   $('fab-main').className = 'fab-main';
   if (state.steelTypes.length === 0) return toast('Primero crea un tipo de acero en Admin', 'info');
-  const opts = state.steelTypes.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+  const opts = state.steelTypes.map(s => `<option value="${s.id}">${s.code ? '[' + s.code + '] ' : ''}${s.name}</option>`).join('');
   $('modal-inner').innerHTML = `
     <div class="modal-header">
       <h3>📤 Registrar Salida</h3>

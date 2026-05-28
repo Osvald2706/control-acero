@@ -150,6 +150,7 @@ def get_inventory(user=Depends(get_current_user), db: Session = Depends(get_db))
 
         result.append({
             "id": st.id,
+            "code": st.code or "",
             "name": st.name,
             "stock": stock,
             "last_movement": last_info,
@@ -173,6 +174,7 @@ def list_movements(user=Depends(get_current_user), db: Session = Depends(get_db)
         result.append({
             "id": m.id,
             "steel_type_id": m.steel_type_id,
+            "steel_type_code": m.steel_type.code if m.steel_type else "",
             "steel_type_name": m.steel_type.name if m.steel_type else "Desconocido",
             "movement_type": m.movement_type,
             "quantity": m.quantity,
@@ -316,7 +318,7 @@ def export_inventory(user=Depends(get_current_user), db: Session = Depends(get_d
         bottom=Side(style="thin"),
     )
 
-    headers = ["Tipo de Acero", "Cantidad Disponible", "Estado"]
+    headers = ["Código", "Tipo de Acero", "Cantidad Disponible", "Estado"]
     for col, h in enumerate(headers, 1):
         cell = ws.cell(row=1, column=col, value=h)
         cell.font = header_font
@@ -324,9 +326,10 @@ def export_inventory(user=Depends(get_current_user), db: Session = Depends(get_d
         cell.alignment = header_alignment
         cell.border = thin_border
 
-    ws.column_dimensions["A"].width = 35
-    ws.column_dimensions["B"].width = 22
-    ws.column_dimensions["C"].width = 15
+    ws.column_dimensions["A"].width = 18
+    ws.column_dimensions["B"].width = 35
+    ws.column_dimensions["C"].width = 22
+    ws.column_dimensions["D"].width = 15
 
     row = 2
     for st in steel_types:
@@ -335,10 +338,12 @@ def export_inventory(user=Depends(get_current_user), db: Session = Depends(get_d
         stock = entry_qty - exit_qty
         status = "Bajo stock" if stock < 5 else "OK"
 
-        ws.cell(row=row, column=1, value=st.name).border = thin_border
-        ws.cell(row=row, column=2, value=stock).border = thin_border
-        ws.cell(row=row, column=2).alignment = Alignment(horizontal="center")
-        status_cell = ws.cell(row=row, column=3, value=status)
+        ws.cell(row=row, column=1, value=st.code or "").border = thin_border
+        ws.cell(row=row, column=1).alignment = Alignment(horizontal="center")
+        ws.cell(row=row, column=2, value=st.name).border = thin_border
+        ws.cell(row=row, column=3, value=stock).border = thin_border
+        ws.cell(row=row, column=3).alignment = Alignment(horizontal="center")
+        status_cell = ws.cell(row=row, column=4, value=status)
         status_cell.border = thin_border
         status_cell.alignment = Alignment(horizontal="center")
         if stock < 5:
@@ -347,7 +352,7 @@ def export_inventory(user=Depends(get_current_user), db: Session = Depends(get_d
 
     ws2 = wb.create_sheet("Movimientos")
     mov_headers = [
-        "Fecha", "Tipo", "Tipo de Acero", "Cantidad",
+        "Fecha", "Tipo", "Código", "Tipo de Acero", "Cantidad",
         "Quién Registró", "Quién Sacó", "Nota",
     ]
     for col, h in enumerate(mov_headers, 1):
@@ -357,7 +362,7 @@ def export_inventory(user=Depends(get_current_user), db: Session = Depends(get_d
         cell.alignment = header_alignment
         cell.border = thin_border
 
-    widths = [20, 12, 30, 12, 20, 20, 30]
+    widths = [20, 12, 15, 30, 12, 20, 20, 30]
     for i, w in enumerate(widths, 1):
         ws2.column_dimensions[chr(64 + i)].width = w
 
@@ -373,12 +378,14 @@ def export_inventory(user=Depends(get_current_user), db: Session = Depends(get_d
         ws2.cell(row=row, column=1, value=m.created_at.strftime("%d/%m/%Y %H:%M") if m.created_at else "").border = thin_border
         ws2.cell(row=row, column=2, value="Entrada" if m.movement_type == "entry" else "Salida").border = thin_border
         ws2.cell(row=row, column=2).alignment = Alignment(horizontal="center")
-        ws2.cell(row=row, column=3, value=m.steel_type.name if m.steel_type else "").border = thin_border
-        ws2.cell(row=row, column=4, value=m.quantity).border = thin_border
-        ws2.cell(row=row, column=4).alignment = Alignment(horizontal="center")
-        ws2.cell(row=row, column=5, value=u.name if u else "").border = thin_border
-        ws2.cell(row=row, column=6, value=m.person_name or "").border = thin_border
-        ws2.cell(row=row, column=7, value=m.note or "").border = thin_border
+        ws2.cell(row=row, column=3, value=m.steel_type.code if m.steel_type else "").border = thin_border
+        ws2.cell(row=row, column=3).alignment = Alignment(horizontal="center")
+        ws2.cell(row=row, column=4, value=m.steel_type.name if m.steel_type else "").border = thin_border
+        ws2.cell(row=row, column=5, value=m.quantity).border = thin_border
+        ws2.cell(row=row, column=5).alignment = Alignment(horizontal="center")
+        ws2.cell(row=row, column=6, value=u.name if u else "").border = thin_border
+        ws2.cell(row=row, column=7, value=m.person_name or "").border = thin_border
+        ws2.cell(row=row, column=8, value=m.note or "").border = thin_border
         row += 1
 
     output = io.BytesIO()
@@ -397,7 +404,7 @@ def export_inventory(user=Depends(get_current_user), db: Session = Depends(get_d
 @app.get("/api/steel-types")
 def list_steel_types(user=Depends(get_current_user), db: Session = Depends(get_db)):
     q = db.query(models.SteelType).order_by(models.SteelType.name).all()
-    return [{"id": st.id, "name": st.name} for st in q]
+    return [{"id": st.id, "code": st.code or "", "name": st.name} for st in q]
 
 
 @app.post("/api/steel-types")
@@ -414,11 +421,16 @@ def create_steel_type(
     existing = db.query(models.SteelType).filter(models.SteelType.name == name).first()
     if existing:
         raise HTTPException(status_code=400, detail="Ya existe")
-    st = models.SteelType(name=name)
+    code = data.get("code", "").strip()
+    if code:
+        existing_code = db.query(models.SteelType).filter(models.SteelType.code == code).first()
+        if existing_code:
+            raise HTTPException(status_code=400, detail="El código ya existe")
+    st = models.SteelType(name=name, code=code if code else None)
     db.add(st)
     db.commit()
     db.refresh(st)
-    return {"id": st.id, "name": st.name}
+    return {"id": st.id, "code": st.code or "", "name": st.name}
 
 
 @app.delete("/api/steel-types/{steel_type_id}")
