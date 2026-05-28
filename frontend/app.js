@@ -123,29 +123,14 @@ function renderDashboard() {
     : state.inventory.map(item => {
         const isLow = item.stock < 5;
         const isCritical = item.stock === 0;
-        const stockClass = isCritical ? 'critical' : isLow ? 'warning' : 'ok';
-        const badge = isCritical
-          ? '<span class="inv-card-badge badge-low">⚠ Sin stock</span>'
-          : isLow
-          ? '<span class="inv-card-badge badge-warning">⚠ Bajo stock</span>'
-          : '<span class="inv-card-badge badge-ok">✓ Disponible</span>';
-        const codeLabel = item.code ? `<span style="font-size:.75rem;color:var(--gray-400);font-weight:500;background:var(--gray-100);padding:.125rem .5rem;border-radius:6px;display:inline-block;margin-bottom:.375rem">${item.code}</span>` : '';
         return `
-          <div class="inv-card">
-            <div class="inv-card-top">
-              <div>
-                ${codeLabel}
+          <div class="inv-card ${isCritical ? 'critical' : isLow ? 'low' : ''}">
+            <div class="inv-card-body">
+              <div class="inv-card-info">
+                ${item.code ? `<div class="inv-card-code">${item.code}</div>` : ''}
                 <div class="inv-card-name">${item.name}</div>
               </div>
-              <div class="inv-card-stock ${stockClass}">${item.stock}</div>
-            </div>
-            <div class="inv-card-bottom">
-              <div class="inv-card-meta">
-                ${item.last_movement
-                  ? `${item.last_movement.type === 'entry' ? '📥' : '📤'} ${item.last_movement.by} · ${formatDate(item.last_movement.date)}`
-                  : 'Sin movimientos'}
-              </div>
-              ${badge}
+              <div class="inv-card-stock">${item.stock}</div>
             </div>
           </div>
         `;
